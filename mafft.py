@@ -4,6 +4,7 @@
 by: Sinai Sacharen
 
 """
+import subprocess
 
 # ------------------------""" imports """----------------------------------- <editor-fold>
 
@@ -39,7 +40,25 @@ file_og_name = 'allprot1108'
 
 cmd = 'tar -xvf ' + path_with_data + file_og_name + '.tar.xz --directory ' + path_to_save
 os.system(cmd)
+
 fasta_file_gisaid = file_og_name + '.fasta'
+
+# here we take care of all the characters that are problematic
+# sed_c = "'s/*//g'"
+# comm = 'sed -i ' + sed_c + ' ' + path_to_save+'allprot1108/' + fasta_file_gisaid
+# subprocess.run('%s' % 'cd', shell=True)
+# subprocess.run('%s' % comm, shell=True)
+# #
+# sed_c = "'s/ô/o/g'"
+# comm1 = 'sed -i ' + sed_c + ' ' + path_to_save +'allprot1108/' + fasta_file_gisaid
+# subprocess.run('%s' % 'cd', shell=True)
+# subprocess.run('%s' % comm1, shell=True)
+#
+# sed_c = "'s/é/e/g'"
+# comm2 = 'sed -i ' + sed_c + ' ' + path_to_save +'allprot1108/' + fasta_file_gisaid
+# subprocess.run('%s' % 'cd', shell=True)
+# subprocess.run('%s' % comm2, shell=True)
+
 print(fasta_file_gisaid)
 # P_list = ['N','NSP8','NSP9']
 p_list = ['Spike', 'NSP10', 'NSP9', 'NSP8', 'NSP7', 'NSP6', 'NSP5', 'NSP4', 'NSP3', 'NSP2', 'NSP1', 'NS7b', 'NSP11',
@@ -53,45 +72,48 @@ human = 0
 cour = 0
 number_of_seq_dict = {}
 
-input_handle = open(path_to_save + file_og_name + '/' + fasta_file_gisaid, "r")
-for record in SeqIO.parse(input_handle, "fasta"):
-    count_file_seq += 1
-    # print(record.seq)
-    P = re.findall(r'\w+', record.id)[0]
-    if P == 'NS9a' or P == 'NS9b' or P == 'NS9c':
-        continue
-    if 'Human' in record.description:
-        human+=1
-    else:
-        continue
-    ref_seq_f = ref_df.loc[P, 'sequence']
-    if P not in number_of_seq_dict.keys():
-        number_of_seq_dict[P] = [1,0]
-    else:
-        number_of_seq_dict[P][0]+=1
+with open(path_to_save + file_og_name + '/' + fasta_file_gisaid, "r", encoding='latin1') as input_handle:
+    for record in SeqIO.parse(input_handle, "fasta"):
+        count_file_seq += 1
+        # print(record.seq)
+        P = re.findall(r'\w+', record.id)[0]
+        if P == 'NS9a' or P == 'NS9b' or P == 'NS9c':
+            continue
+        if 'Human' in record.description:
+            human+=1
+        else:
+            continue
+        ref_seq_f = ref_df.loc[P, 'sequence']
+        if P not in number_of_seq_dict.keys():
+            number_of_seq_dict[P] = [1,0]
+        else:
+            number_of_seq_dict[P][0]+=1
 
-    range_val = len(ref_seq_f) * 0.025
-    low_limit = len(ref_seq_f) - range_val
-    hight_limit = len(ref_seq_f) + range_val
-    if record.seq.find('X') == -1 and low_limit < len(record.seq) < hight_limit:
-        cour+=1
-        number_of_seq_dict[P][1]+=1
-        with open(path_to_save + P + '_no_x.fa', 'a') as handle:
-            SeqIO.write(record, handle, 'fasta')
+        range_val = len(ref_seq_f) * 0.025
+        low_limit = len(ref_seq_f) - range_val
+        hight_limit = len(ref_seq_f) + range_val
+        if record.seq.find('X') == -1 and low_limit < len(record.seq) < hight_limit:
+            cour+=1
+            number_of_seq_dict[P][1]+=1
 
-    if count_file_seq % 777777 == 0:
-        print(count_file_seq)
-input_handle.close()
+            with open(path_to_save + P + '_no_x.fa', 'a') as handle:
+                SeqIO.write(record, handle, 'fasta')
+
+        if count_file_seq % 777777 == 0:
+            print(count_file_seq)
+
+print('here we at ..........')
+
 
 file1 = open(path_to_save+"log_file.txt", "a")  # append mode
 file1.write("total number of sequences:"+str(count_file_seq)+" \n")
 file1.write("total number of sequences after curation :"+str(cour)+" \n")
-file1.write("total number of HUMAN sequences :"+str(cour)+" \n")
-file1.write("--------------------------------------------------------------------------------")
+file1.write("total number of HUMAN sequences :"+str(human)+" \n")
+file1.write("--------------------------------------------------------------------------------"+'\n')
 for key, val in number_of_seq_dict.items():
     file1.write("total number of sequences in protein "+key+" before curation:" + str(val[0]) + " \n")
-    file1.write("total number of sequences in protein " + key + " after :" + str(val[0]) + " \n")
-    file1.write("--------------------------------------------------------------------------------")
+    file1.write("total number of sequences in protein " + key + " after :" + str(val[1]) + " \n")
+    file1.write("--------------------------------------------------------------------------------"+'\n'+'\n')
 file1.close()
 
 # -------------------------------------MAFFT---------------------------------- </editor-fold>
@@ -103,14 +125,6 @@ for P in p_list:
     output_file = path_to_save + P + "_maffet_alinged.fa"
     cd_c = 'cd ' + path_to_save + '; '
     command = cd_c + "mafft --6merpair --keeplength --thread -1 --anysymbol --addfragments  " + input_file + " /home/sacharen/Documents/Maffet_projet/" + P + "_fasta.fa > " + output_file
-    sed_c = "'s/*//g'"
-    comm = 'sed -i ' + sed_c + ' ' + path_to_save + input_file
-    subprocess.check_output('%s' % 'cd', shell=True)
-    # try:
-    #     subprocess.check_output('%s' % comm, shell=True)
-    # except subprocess.CalledProcessError:
-    #     continue
-    subprocess.check_output('%s' % comm, shell=True)
 
     try:
         subprocess.check_output('%s' % command, shell=True)
