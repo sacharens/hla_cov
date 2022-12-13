@@ -8,6 +8,8 @@ import subprocess
 
 # ------------------------""" imports """----------------------------------- <editor-fold>
 
+# from hla_cov.Tool_File import *
+# from hla_cov.pygmail import *
 from Tool_File import *
 from pygmail import *
 
@@ -43,21 +45,7 @@ os.system(cmd)
 
 fasta_file_gisaid = file_og_name + '.fasta'
 
-# here we take care of all the characters that are problematic
-# sed_c = "'s/*//g'"
-# comm = 'sed -i ' + sed_c + ' ' + path_to_save+'allprot1108/' + fasta_file_gisaid
-# subprocess.run('%s' % 'cd', shell=True)
-# subprocess.run('%s' % comm, shell=True)
-# #
-# sed_c = "'s/ô/o/g'"
-# comm1 = 'sed -i ' + sed_c + ' ' + path_to_save +'allprot1108/' + fasta_file_gisaid
-# subprocess.run('%s' % 'cd', shell=True)
-# subprocess.run('%s' % comm1, shell=True)
-#
-# sed_c = "'s/é/e/g'"
-# comm2 = 'sed -i ' + sed_c + ' ' + path_to_save +'allprot1108/' + fasta_file_gisaid
-# subprocess.run('%s' % 'cd', shell=True)
-# subprocess.run('%s' % comm2, shell=True)
+
 
 print(fasta_file_gisaid)
 # P_list = ['N','NSP8','NSP9']
@@ -120,21 +108,56 @@ file1.close()
 
 
 for P in p_list:
+    P = 'NSP3'
+    all_seq_list = []
+    input_handle = open(path_to_save + P + '_no_x' + '.fa', "r")
+    for record in SeqIO.parse(input_handle, "fasta"):
+        all_seq_list.append(record)
 
-    input_file = P + '_no_x.fa'
-    output_file = path_to_save + P + "_maffet_alinged.fa"
-    cd_c = 'cd ' + path_to_save + '; '
-    command = cd_c + "mafft --6merpair --keeplength --thread -1 --anysymbol --addfragments  " + input_file + " /home/sacharen/Documents/Maffet_projet/" + P + "_fasta.fa > " + output_file
+    input_handle.close()
 
-    try:
-        subprocess.check_output('%s' % command, shell=True)
-    except subprocess.CalledProcessError:
-        continue
-print(P,
-      'done-----------------------------------------------------------------------------------------------------')
+    ##  here we eak with the fct that the file is to big ##
+    third = round(len(all_seq_list) / 3)
+    random.shuffle(all_seq_list)
 
+    list_for_save_A = all_seq_list[:third]
+    list_for_save_B = all_seq_list[third:third * 2]
+    list_for_save_C = all_seq_list[third * 2:]
 
+    # discarding x
+    SeqIO.write(list_for_save_A, path_to_save + P + '_no_x_A' + '.fa', 'fasta')
+    SeqIO.write(list_for_save_B, path_to_save + P + '_no_x_B' + '.fa', 'fasta')
+    SeqIO.write(list_for_save_C, path_to_save + P + '_no_x_C' + '.fa', 'fasta')
 
+    for f in ['A', 'B', 'C']:
+        input_file = P + '_no_x_' + f + '.fa'
+        output_file = path_to_save + P + "_maffet_alinged_" + f + ".fa"
+        cd_c = 'cd ' + path_to_save + '; '
+        command = cd_c + "mafft --6merpair --keeplength --thread -1 --anysymbol --addfragments  " + input_file + " /home/sacharen/Documents/Maffet_projet/" + P + "_fasta.fa > " + output_file
+        sed_c = "'s/*//g'"
+        comm = 'sed -i ' + sed_c + ' ' + path_to_save + input_file
+        subprocess.run('%s' % 'cd', shell=True)
+
+        subprocess.run('%s' % comm, shell=True)
+
+        try:
+            subprocess.run('%s' % command, shell=True)
+        except subprocess.CalledProcessError:
+            continue
+
+    cat_com = 'cat '+ path_to_save+P + '_maffet_alinged_A' + '.fa '+path_to_save+ P + '_maffet_alinged_B' + '.fa '+ path_to_save+P + \
+              '_maffet_alinged_C' + '.fa > '+path_to_save+ P + '_maffet_alinged.fa'
+
+    subprocess.run('%s' % cat_com, shell=True)
+    #### remove the  helper files ####
+    rm1 = 'rm -v '+path_to_save+ P + '_no_x_A.fa '+path_to_save+ P + '_no_x_B.fa '+ path_to_save+ P + '_no_x_C.fa'
+    subprocess.run('%s' % rm1, shell=True)
+    rm2 = 'rm -v '+path_to_save+ P + '_maffet_alinged_A.fa '+path_to_save+ P + '_maffet_alinged_B.fa '+ path_to_save+ P \
+          + '_maffet_alinged_C.fa'
+    subprocess.run('%s' % rm2, shell=True)
+
+    print(P,
+          'done-----------------------------------------------------------------------------------------------------')
 
 
 # -------------------------------""" get all dates """------------------ <editor-fold>
@@ -162,7 +185,7 @@ for P in p_list:
 
     list_of_recoreds = []
 
-    input_handle = open(path_to_save + P + '_maffet_alinged.fa', "r")
+    input_handle = open(path_to_save + P + '_maffet_alinged.fa', "r",encoding='latin1')
     for record in SeqIO.parse(input_handle, "fasta"):
         count1+=1
 
@@ -175,8 +198,10 @@ for P in p_list:
     p, c = simple_list_PFM(list_of_recoreds, ref_sequence=ref_sequence)
     p.to_excel(path_to_save + P + 'PFM.xlsx')
     c.to_excel(path_to_save + P + 'COUNT.xlsx')
-    p.to_excel('/run/user/1000/gvfs/afp-volume:host=HERTZ-LAB-NAS.local,user=sinai,volume=students/Sinai/GISAID_nov_2022/'+ P + 'PFM.xlsx')
-
+    try:
+        p.to_excel('/run/user/1000/gvfs/afp-volume:host=HERTZ-LAB-NAS.local,user=sinai,volume=students/Sinai/GISAID_nov_2022/'+ P + 'PFM.xlsx')
+    except OSError:
+        print('didnot save monthly pfm')
     simple_entropy_function(path_to_save=path_to_save, save_file_name=P + '_entropy_matrix', pfm_df=p)
     print(P)
     print('PFM done!')
@@ -208,7 +233,7 @@ for P in p_list:
         recored_temp_list = protien_dict[key]
 
 
-        ##### this part is for monthly frequency ####
+        ##### this part is for monthly count ####
         p, c = simple_list_PFM(recored_temp_list, ref_sequence=ref_sequence)
         c['date'] = c['A'].apply(lambda x: key)
         c['protein'] = c['A'].apply(lambda x: P)
@@ -219,10 +244,8 @@ for P in p_list:
         #
         #
         #
-        random.shuffle(recored_temp_list)
-        list_for_save = list_for_save + recored_temp_list[:3901]
 
-        ##### this part is for monthly entropy ####
+        ##### this part is for monthly PFM ####
         p, c = simple_list_PFM(recored_temp_list, ref_sequence=ref_sequence)
         p['date'] = p['A'].apply(lambda x: key)
         p['protein'] = p['A'].apply(lambda x: P)
@@ -233,7 +256,11 @@ for P in p_list:
 
     print(P, 'monthly PFM done!!!!!!!!!!!!!')
 
-    ####################################################  PFM and entropy
+    ####################################################  PFM and entropy no bias
+
+    random.shuffle(recored_temp_list)
+    list_for_save = list_for_save + recored_temp_list[:3901]
+
     if len(list_for_save)*len(date_list)!=3900*len(date_list):
         print('number of seq donot add up in rntropy no bias')
         print(len(list_for_save)*len(date_list),3900*len(date_list))
@@ -246,10 +273,18 @@ for P in p_list:
 
     print(P, 'entropy no bias PFM done!')
 
+
+
+# concat all monthlay freq and count dfs
+
+
+
+
 monthly_df.to_csv(path_to_save + 'monthly_df_all_prot.csv')
 monthly_count_df.to_csv(path_to_save + 'monthly_count_df_all_prot.csv')
-
-monthly_count_df.to_csv('/run/user/1000/gvfs/afp-volume:host=HERTZ-LAB-NAS.local,user=sinai,volume=students/Sinai/GISAID_nov_2022/' + 'monthly_count_df_all_prot.csv')
-
+try:
+    monthly_count_df.to_csv('/run/user/1000/gvfs/afp-volume:host=HERTZ-LAB-NAS.local,user=sinai,volume=students/Sinai/GISAID_nov_2022/' + 'monthly_count_df_all_prot.csv')
+except OSError:
+    print('did not save to NAS monthly df')
 # ------------------------------------------------------------------------ </editor-fold>
 mail_function(subject='gisaid pipline', content='done....')

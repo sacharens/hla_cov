@@ -20,12 +20,13 @@ import time
 import pandas as pd
 import re
 import io
-# from WSL_Tool_File import *
 import math
 import ast
 from sklearn import preprocessing
-from mhcflurry import Class1AffinityPredictor
-predictor = Class1AffinityPredictor.load()
+# from mhcflurry import Class1AffinityPredictor
+# predictor = Class1AffinityPredictor.load()
+
+
 import numpy as np
 import ast
 
@@ -146,10 +147,22 @@ def mix_mhc_pred(pep_list):
 def mhc_flurry(pep_list):
     global hla_list
 
-    data = predictor.predict_to_dataframe(alleles=hla_list, peptides=list(map(lambda x:[x]*len(hla_list),pep_list)))
-    t_data = data.pivot(index='peptide', columns='allele', values='prediction_percentile').reset_index()
-    t_data.set_index('peptide',inplace=True)
-    return t_data
+
+    dict_input = {}
+    # The
+    # input
+    # CSV
+    # file is expected
+    # to
+    # contain
+    # columns “allele”, “peptide”, and, optionally, “n_flank”, and “c_flank”.
+
+    output_file = path_with_data + 'flurry_pred_out.csv'
+    command = 'mhcflurry-predict'+ INPUT.csv + ' –out '+output_file
+    subprocess.run(command, shell=True)
+
+    flurry_pred_df = pd.read_csv(output_file, sep='\s+', comment='#')
+
 
 
 
