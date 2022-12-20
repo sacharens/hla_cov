@@ -11,8 +11,8 @@ starttime = time.time()
 # ------------------------------------------------------------------------ <editor-fold>
 
 path_to_tool = '/home/sacharen/netMHCpan-4.1/'
-path_with_data = '/home/sacharen/Documents/hlaproject/'
-path_to_save = '/home/sacharen/Documents/all_prot_tcell_score/'
+path_with_data = '/home/sacharen/Documents/hlaeecovrege/'
+path_to_save = path_with_data
 if os.path.exists(path_to_tool) and os.path.exists(path_to_save) and os.path.exists(path_with_data):
     print('found all paths  :) ')
 else:

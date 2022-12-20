@@ -70,7 +70,20 @@ pep_list = ['NALRITFGG','ALRITFGGP','LRITFGGPS','RITFGGPSD','ITFGGPSDS','TFGGPSD
 
 
 
+def all_available_kmers_f_seq(seq, k):
+    """
+    Gets a string. Returns a list with all kmers (motifs) contained in the string,
+    @param seq: string
+    @param k: int. the size of motifs to extract (kmers)
+    @return: string
 
+    """
+    kmer_list = []
+    for start in range(len(seq) - k + 1):
+        kmer = seq[start:start+k]
+        kmer_list.append(kmer)
+
+    return kmer_list
 
 
 
@@ -139,7 +152,8 @@ def mix_mhc_pred(pep_list):
     mix_pred_df.rename(columns=col_dict,inplace=True)
     mix_pred_df.reset_index(inplace=True)
     mix_pred_df_melt = pd.melt(mix_pred_df, id_vars=['Peptide'], value_vars=mix_pred_df.columns[1:],
-                               var_name='HLA', value_name='Rank')
+                               var_name='allele', value_name='Rank')
+
 
     return mix_pred_df_melt
 
@@ -149,21 +163,23 @@ def mhc_flurry(pep_list):
 
 
     dict_input = {}
-    # The
-    # input
-    # CSV
-    # file is expected
-    # to
-    # contain
-    # columns “allele”, “peptide”, and, optionally, “n_flank”, and “c_flank”.
+    for h in hla_list:
+        dict_input[h] = pep_list
 
+    input_csv = pd.DataFrame.from_dict(dict_input)
+    input_csv = pd.melt(input_csv,value_vars=hla_list,var_name='allele', value_name='peptide')
+    input_csv.set_index('allele',drop=True,inplace=True)
+    input_csv.to_csv(path_with_data + "flurry_input_file.csv")
+    temp_pep_file = path_with_data + "flurry_input_file.csv"
     output_file = path_with_data + 'flurry_pred_out.csv'
-    command = 'mhcflurry-predict'+ INPUT.csv + ' –out '+output_file
+    # touch_comm = 'touch '+output_file
+    # subprocess.run(touch_comm, shell=True)
+    command = 'mhcflurry-predict '+ temp_pep_file + ' > '+ output_file
     subprocess.run(command, shell=True)
 
-    flurry_pred_df = pd.read_csv(output_file, sep='\s+', comment='#')
-
-
+    flurry_pred_df = pd.read_csv(output_file, sep=',',skiprows=4)
+    return_df = flurry_pred_df[['allele','peptide','mhcflurry_presentation_percentile']].copy()
+    return return_df
 
 
 def net_mhc_pan(pep_list):
@@ -196,10 +212,8 @@ def net_mhc_pan(pep_list):
         if type(col) is tuple:
             predict_df.drop(col, axis=1, inplace=True)
 
-
-    predict_df.rename(columns=col_dict,inplace=True)
     predict_df.reset_index(inplace=True)
-    mix_pred_df_melt = pd.melt(predict_df, id_vars=['Peptide'], value_vars=predict_df.columns[:],
+    predict_df = pd.melt(predict_df, id_vars=['Peptide'], value_vars=hla_list,
                                var_name='HLA', value_name='Rank')
 
     return predict_df
