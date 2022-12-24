@@ -13,7 +13,6 @@ import pandas as pd
 # from hla_cov.Tool_File import *
 # from hla_cov.pygmail import *
 from Tool_File import *
-from pygmail import *
 
 # ------------------------------------------------------------------------ </editor-fold>
 

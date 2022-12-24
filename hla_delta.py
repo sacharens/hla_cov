@@ -11,8 +11,8 @@ starttime = time.time()
 # ------------------------------------------------------------------------ <editor-fold>
 
 path_to_tool = '/home/sacharen/netMHCpan-4.1/'
-path_with_data = '/home/sacharen/Documents/hlaeecovrege/'
-path_to_save = path_with_data
+path_with_data = '/home/sacharen/Documents/hla_ee/'
+path_to_save = '/home/sacharen/Documents/hlaeecovrege/'
 if os.path.exists(path_to_tool) and os.path.exists(path_to_save) and os.path.exists(path_with_data):
     print('found all paths  :) ')
 else:
@@ -77,9 +77,9 @@ def is_not_og_aa(aa_id_f, ref_s):
 # ------------------------------------------------------------------------ </editor-fold>
 
 # ------------------------------input files----------------------------- <editor-fold>
-prevalent_allel_file = path_with_data+'prevalent_alleles'
-file_with_mut_peptides = path_with_data+'temp_mut_prp_file.txt'
-temp_xlsx_file_and_path_f = path_with_data+'temp_file_netMHC.xlsx'
+prevalent_allel_file = path_to_save+'prevalent_alleles'
+file_with_mut_peptides = path_to_save+'temp_mut_prp_file.txt'
+temp_xlsx_file_and_path_f = path_to_save+'temp_file_netMHC.xlsx'
 ref_df = pd.read_excel('/home/sacharen/Documents/find_ref/new_ref_df.xlsx')
 ref_df.set_index(['GISAID name'], inplace=True)
 
@@ -97,7 +97,7 @@ for P in ['NSP10','NSP9','NSP8','NSP7','NSP6','NSP5','NSP3','NSP4','NSP2','NSP1'
 
     # -------------------------------take all 9 mers from hla coverage file --- <editor-fold>
 
-    df_f = pd.read_csv(path_with_data+P+'hla_coverage.csv',index_col=0)
+    df_f = pd.read_csv(path_to_save+P+'hla_coverage.csv',index_col=0)
     df_f['len pep'] = df_f['Peptide'].apply(lambda x:len(x))
     df_f = df_f[df_f['len pep']==9]
     df_f.drop('len pep',axis=1,inplace=True)
