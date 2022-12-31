@@ -18,6 +18,8 @@ import subprocess
 import os
 import time
 import pandas as pd
+from Bio import SeqIO
+from Bio.Seq import Seq
 import re
 import io
 import math
@@ -38,7 +40,7 @@ import ast
 
 path_to_tools = '/home/sacharen/'
 path_with_data = '/home/sacharen/Documents/ansambel_hla/'
-path_to_save = path_with_data
+path_to_save = path_with_data+'protensemble/'
 if os.path.exists(path_to_tools) and os.path.exists(path_to_save) and os.path.exists(path_with_data):
     print('found all paths  :) ')
 else:
@@ -48,26 +50,53 @@ else:
 # ------------------------------------------------------------------------ </editor-fold>
 
 
-# ------------------------------------------------------------------------ </editor-fold>
+# -----------------------------import files--------------------------------- <editor-fold>
 
-
+prevalent_allel_file = path_with_data + 'prevalent_alleles'
+# full_alele_file = pd.read_csv(path_with_data + 'all_netMHCpan_alleles.txt', sep='\s+', header=None)
+path_with_all_protien_fa = '/home/sacharen/Documents/find_ref/sars_protien_fasta/'
+ref_df = pd.read_excel('/home/sacharen/Documents/find_ref/new_ref_df.xlsx')
 ###############   the HLA acording to most frequent  from paper ###################
 
 
-hla_list = ['HLA-A01:01','HLA-A02:01','HLA-A02:05','HLA-A03:01','HLA-A11:01','HLA-A23:01','HLA-A24:02','HLA-A25:01']
+# hla_list = ['HLA-A01:01','HLA-A02:01','HLA-A02:05','HLA-A03:01','HLA-A11:01','HLA-A23:01','HLA-A24:02','HLA-A25:01']
 
 
 
-# ------------------------------------------------------------------------ </editor-fold>
+# ------------------------------------------------------------------------ <editor-fold>
 
 # get all 9 mers from fasta refrence
 
+#
+# pep_list = ['NALRITFGG','ALRITFGGP','LRITFGGPS','RITFGGPSD','ITFGGPSDS','TFGGPSDST','FGGPSDSTG','GGPSDSTGS','GPSDSTGSN','PSDSTGSNQ','SDSTGSNQN','DSTGSNQNG','STGSNQNGG','TGSNQNGGA','GSNQNGGAR','SNQNGGARS','NQNGGARSK','QNGGARSKQ']
+#
 
-pep_list = ['NALRITFGG','ALRITFGGP','LRITFGGPS','RITFGGPSD','ITFGGPSDS','TFGGPSDST','FGGPSDSTG','GGPSDSTGS','GPSDSTGSN','PSDSTGSNQ','SDSTGSNQN','DSTGSNQNG','STGSNQNGG','TGSNQNGGA','GSNQNGGAR','SNQNGGARS','NQNGGARSK','QNGGARSKQ']
+# ----------------------------------FUNCTIONS-------------------------------------- <editor-fold>
 
 
-# ------------------------------------------------------------------------ </editor-fold>
+def read_in_allels(prealent_allel_file_and_path, list_format = False, str_format = False):
+    """
+    tis function will read in the file and return all the allelels in it in the following format:
+    'HLA-B40:01,HLA-B58:01,HLA-B15:01'
+    so the netHmcpan predicter can read it in
+    :param prealent_allel_file_and_path:
+    :return: string
+    """
+    with open(prealent_allel_file_and_path) as file_in:
+        lines = ''
+        list_lines = []
+        for line in file_in:
+            temp_line = line.rstrip() + ','
+            if len(temp_line) < 2:
+                continue
+            else:
+                lines += temp_line
+                list_lines.append(temp_line[:-1])
 
+        if list_format:
+            return list_lines
+        if str_format:
+            return lines[:-1]
 
 
 def all_available_kmers_f_seq(seq, k):
@@ -129,8 +158,8 @@ def make_mix_hla_fomat(hla_list_f):
 
 
 
-def mix_mhc_pred(pep_list):
-    global hla_list
+def mix_mhc_pred(pep_list,hla_list):
+
     HLA_str = make_mix_hla_fomat(hla_list)
     temp_pep_file = path_with_data + "mix_pep_file.txt"
     creat_pep_file_from_list(pep_list, temp_pep_file)
@@ -154,14 +183,12 @@ def mix_mhc_pred(pep_list):
     mix_pred_df_melt = pd.melt(mix_pred_df, id_vars=['Peptide'], value_vars=mix_pred_df.columns[1:],
                                var_name='allele', value_name='Rank')
 
+    mix_pred_df_melt.rename(columns={'allele':'HLA','Rank':'mixMHC Rank'},inplace = True)
 
     return mix_pred_df_melt
 
 
-def mhc_flurry(pep_list):
-    global hla_list
-
-
+def mhc_flurry(pep_list,hla_list):
     dict_input = {}
     for h in hla_list:
         dict_input[h] = pep_list
@@ -179,13 +206,11 @@ def mhc_flurry(pep_list):
 
     flurry_pred_df = pd.read_csv(output_file, sep=',',skiprows=4)
     return_df = flurry_pred_df[['allele','peptide','mhcflurry_presentation_percentile']].copy()
+    return_df.rename(columns={'allele':'HLA','peptide':'Peptide'},inplace = True)
     return return_df
 
 
-def net_mhc_pan(pep_list):
-
-    global hla_list
-
+def net_mhc_pan(pep_list,hla_list):
     hla_str = ','.join(hla_list)
     temp_pep_file = path_with_data + "net_pep_file.txt"
     creat_pep_file_from_list(pep_list, temp_pep_file)
@@ -215,6 +240,29 @@ def net_mhc_pan(pep_list):
     predict_df.reset_index(inplace=True)
     predict_df = pd.melt(predict_df, id_vars=['Peptide'], value_vars=hla_list,
                                var_name='HLA', value_name='Rank')
+    predict_df.rename(columns={'Rank':'netMHCpan Rank'},inplace = True)
 
     return predict_df
 # ------------------------------------------------------------------------ </editor-fold>
+
+HLA_list = read_in_allels(prevalent_allel_file,list_format=True)
+
+for p in ['NSP10', 'NSP9', 'NSP8', 'NSP7', 'NSP6', 'NSP5', 'NSP4', 'NSP3', 'NSP2', 'NSP1', 'NS7b', 'NSP11', 'NSP16',
+          'NSP15', 'NSP14'
+    , 'NSP13', 'NSP12', 'N', 'NS8', 'NS7a', 'NS6', 'M', 'E', 'NS3', 'Spike']:
+
+    print('processing protein '+p+'...........................')
+    file_and_path_with_fasta = path_with_all_protien_fa + p + "_fasta.fa"
+    with open(file_and_path_with_fasta, "r", encoding='latin1') as input_handle:
+        for record in SeqIO.parse(input_handle, "fasta"):
+            seq_str = str(record.seq)
+            PEP_list = all_available_kmers_f_seq(seq=seq_str, k=9)
+
+    mix_df = mix_mhc_pred(pep_list=PEP_list, hla_list=HLA_list)
+    flurry_df = mhc_flurry(pep_list=PEP_list, hla_list=HLA_list)
+    net_df = net_mhc_pan(pep_list=PEP_list, hla_list=HLA_list)
+    ensemble_df = pd.concat([mix_df, flurry_df,net_df], axis=1)
+    ensemble_df.to_excel(path_to_save+p+'_ensemble_df.xlsx')
+
+
+

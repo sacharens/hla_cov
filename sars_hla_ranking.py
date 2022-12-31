@@ -32,7 +32,8 @@ from Tool_File import *
 starttime = time.time()
 
 path_with_data = '/home/sacharen/Documents/hlaeecovrege/'
-path_with_hla_data = '/home/sacharen/Documents/sars_hla_ranking_data/'
+path_with_gisaid_data = '/home/sacharen/Documents/hla_ee/'
+path_allele_iedb_delf = '/home/sacharen/Documents/sars_hla_ranking_data/'
 path_to_save = '/home/sacharen/Documents/'
 
 if os.path.exists(path_to_save) and os.path.exists(path_with_data):
@@ -47,9 +48,9 @@ else:
 # main_df = pd.read_csv(path_with_data + 'main_df.csv', index_col=0)
 ref_df = pd.read_excel('/home/sacharen/Documents/find_ref/new_ref_df.xlsx')
 ref_df.set_index(['GISAID name'], inplace=True)
-monthly_df = pd.read_csv('/home/sacharen/Documents/hla_ee/monthly_df_all_prot.csv', sep=',')
+monthly_df = pd.read_csv(path_with_gisaid_data+'monthly_df_all_prot.csv', sep=',')
 
-allele_data_omst = pd.read_csv(path_with_data + "Luo_SD_1_inferred_HLAallele_summary.csv", index_col=0, sep='\s+',
+allele_data_omst = pd.read_csv(path_allele_iedb_delf + "Luo_SD_1_inferred_HLAallele_summary.csv", index_col=0, sep='\s+',
                                header=1)
 allele_data_omst = allele_data_omst.filter(regex='^[A,B]/*', axis=0)
 # allele_data_omst = allele_data_omst.filter(regex='G$',axis=0)
@@ -98,6 +99,7 @@ def find_number_of_monthly_occurrences(position, mut_aa, protein_f, freq=0.0, me
     :param freq:
     :param position:
     :param mut_aa:
+    :param max_month
     :param protein_f:
     :return: number of months
     """
@@ -108,6 +110,8 @@ def find_number_of_monthly_occurrences(position, mut_aa, protein_f, freq=0.0, me
         (monthly_df_melt['Unnamed: 0'] == position) & (monthly_df_melt['variable'] == mut_aa) & (
                 monthly_df_melt['protein'] == protein_f) & (monthly_df_melt['value'] > freq)]
     number_of_months = list(sliced_df['value'])
+    if len(number_of_months) == 0:
+        return 'no max month'
     if max_month == True:
         idx = sliced_df['value'].idxmax()
         max_mont = sliced_df.loc[idx, 'date']
@@ -198,14 +202,16 @@ def is_upper_pep_in_genome(peptide):
 
 # ------------concat all pritien dfs together to get a main df------------ <editor-fold>
 
-text_files = [f for f in os.listdir(path_with_hla_data) if f.endswith('final_df.xlsx')]
+text_files = [f for f in os.listdir(path_with_data) if f.endswith('final_df.xlsx')]
 all_prot_df = pd.DataFrame()
 count = 0
 for file in text_files:
 
-    temp_df = pd.read_excel(path_with_hla_data + file, index_col=0)
+    temp_df = pd.read_excel(path_with_data + file, index_col=0)
     temp_df['protein'] = temp_df['Peptide'].apply(lambda x: file[:-14])
     print(file[:-14])
+    if file[:-14]!= 'E':
+        continue
     # shift column 'Name' to first position
     first_column = temp_df.pop('protein')
     temp_df.insert(0, 'protein', first_column)
@@ -226,11 +232,11 @@ main_df = main_df[main_df['mutations aa'] != '-']
 
 
 # sars t cell
-iedb_t_cell = pd.read_csv(path_with_data + 'sars_t_cell.csv', skiprows=1)
+iedb_t_cell = pd.read_csv(path_allele_iedb_delf + 'sars_t_cell.csv', skiprows=1)
 t_cell_set = set(iedb_t_cell['Description'])
 main_df['IEDB T cell'] = main_df['Peptide'].apply(lambda x: True if x in t_cell_set else False)
 # sars hla
-sars_hla = pd.read_csv(path_with_data + 'sars_hla.csv', skiprows=1)
+sars_hla = pd.read_csv(path_allele_iedb_delf + 'sars_hla.csv', skiprows=1)
 sars_hla = set(sars_hla['Description'])
 main_df['IEDB SARS HLA'] = main_df['Peptide'].apply(lambda x: True if x in sars_hla else False)
 
@@ -353,12 +359,12 @@ def smart_delta(score_row):
 
 # ------------------------------------------------------------------------ </editor-fold>
 
-main_df.to_csv(path_to_save + 'END_GAME_12_22.csv')
+main_df.to_csv(path_to_save + 'EEEEEE_________ND_GAME_12_22.csv')
 
 path_to_nas='/run/user/1000/gvfs/afp-volume:host=HERTZ-LAB-NAS.local,user=sinai,volume=students/Sinai/GISAID_nov_2022/'
 if os.path.exists(path_to_nas):
     print('found path')
-    main_df.to_csv(path_to_nas + 'END_GAME_12_22.csv')
+    main_df.to_csv(path_to_nas + 'EEEEEE_________END_GAME_12_22.csv')
 
 # ----------------------------------------------------------------------------------------------------------------------
 
