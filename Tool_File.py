@@ -1086,7 +1086,7 @@ def find_date(recordid):
     if int(date_list[1]) == 0:
         return None
     if int(date_list[0]) != 2020 and int(date_list[0]) != 2019 and int(date_list[0]) != 2021 and int(
-            date_list[0]) != 2022:
+            date_list[0]) != 2022 and int(date_list[0]) != 2023:
         return None
     try:
         dt = datetime.datetime.strptime(date_match.strip(), "%Y-%m-%d")

@@ -1,5 +1,5 @@
 """
-validation script.
+ensemble hla script
 
 this scrip will take in a list of peptides and the alleles that are predicted to bind to them.
 then the script will invoke the following predictores to make sure they are sound.
@@ -19,6 +19,9 @@ import os
 import time
 import pandas as pd
 from Bio import SeqIO
+from scipy.stats import hmean
+import concurrent.futures
+
 from Bio.Seq import Seq
 import re
 import io
@@ -114,6 +117,56 @@ def all_available_kmers_f_seq(seq, k):
 
     return kmer_list
 
+
+
+
+
+def parallelize_dataframe(df, func, n_cores=4):
+    """
+    This function takes a pandas DataFrame and applies a function to it in parallel using multiprocessing.
+    using the thread pool executor from concurrent.futures library
+    :param df: the df to apply the function on
+    :param func: the function to apply
+    :param n_cores: the number of cores to use
+    :return: df with the function applied on it
+    """
+    df_split = np.array_split(df, n_cores * 2)
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        df_list = executor.map(lambda x: x.copy(deep=True).apply(func, axis=1), df_split)
+    df_list = [df for df in df_list]
+    print(len(df_list))
+
+    df = pd.concat(df_list)
+    return df
+
+
+def majority_voting(ensemble_df):
+    """
+    this function will take in the ensemble df and will apply majority voting to it
+    :param ensemble_df: the ensemble df
+    :return: 2 columns  1- if its a majority vote 2- the geometric mean of the scores of the majority vote
+    """
+    # see if 2 or more of the scores are smaller than 2
+    # if so then it is a majority vote
+    # if not then it is not a majority vote
+    # if it is a majority vote then take the geometric mean of the scores
+    # if not then take the mean of the scores
+    count = 0
+    score_rank_list = []
+    for score in ['mixMHC Rank', 'mhcflurry_presentation_percentile', 'netMHCpan Rank']:
+        pred_score = ensemble_df[score]
+        if pred_score <= 2:
+            count += 1
+            score_rank_list.append(score)
+    if count > 2:
+        ensemble_df['majority vote'] = 1
+        ensemble_df['majority vote score'] = hmean(ensemble_df[score_rank_list])
+    else:
+        ensemble_df['majority vote'] = 0
+        ensemble_df['majority vote score'] = hmean(ensemble_df[
+                                                       ['mixMHC Rank', 'mhcflurry_presentation_percentile',
+                                                        'netMHCpan Rank']])
+    return ensemble_df
 
 
 
@@ -262,7 +315,12 @@ for p in ['NSP10', 'NSP9', 'NSP8', 'NSP7', 'NSP6', 'NSP5', 'NSP4', 'NSP3', 'NSP2
     flurry_df = mhc_flurry(pep_list=PEP_list, hla_list=HLA_list)
     net_df = net_mhc_pan(pep_list=PEP_list, hla_list=HLA_list)
     ensemble_df = pd.concat([mix_df, flurry_df,net_df], axis=1)
-    ensemble_df.to_excel(path_to_save+p+'_ensemble_df.xlsx')
 
 
+    # drop duplicates columns from ensemble_df
 
+    ensemble_df = ensemble_df.loc[:, ~ensemble_df.columns.duplicated()]
+
+    ensemble_df_parallel = parallelize_dataframe(df=ensemble_df, func=majority_voting, n_cores=8)
+
+    ensemble_df_parallel.to_excel(path_to_save + p + '_ensemble_df.xlsx')
